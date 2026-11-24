@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Aetheris — Organic Geometric Atmosphere</title>
+  <!-- Tailwind CSS for clean, responsive glassmorphic UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono for crisp, Apple-inspired typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* Base reset & viewport lock to prevent unwanted scrolling */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0e0c0a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #f4efe6;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none; /* Enables custom touch drag physics */
+    }
+
+    .font-mono-tabular {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Warm earthy/atmospheric glassmorphic floating dock */
+    .glass-panel {
+      background: rgba(24, 21, 18, 0.58);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid rgba(244, 239, 230, 0.12);
+      box-shadow:
+        0 24px 48px -12px rgba(0, 0, 0, 0.65),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .glass-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .glass-pill:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(244, 239, 230, 0.2);
+    }
+
+    .glass-pill.active {
+      background: rgba(226, 184, 135, 0.18);
+      border-color: rgba(226, 184, 135, 0.55);
+      color: #f8e4c9;
+      box-shadow: 0 0 20px rgba(226, 184, 135, 0.14);
+    }
+
+    /* Custom sleek range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(244, 239, 230, 0.14);
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f4efe6;
+      border: 2px solid #1a1714;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #e6be8a;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f4efe6;
+      border: 2px solid #1a1714;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+  </style>
+</head>
+<body class="relative">
+
+  <!-- Full-Viewport High-DPI WebGL Canvas -->
+  <canvas id="glcanvas"></canvas>
+
+  <!-- Top Minimal Atmospheric Header -->
+  <header class="fixed top-0 left-0 right-0 z-10 pointer-events-none px-5 py-5 sm:px-8 sm:py-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-2.5 h-2.5 rounded-full bg-amber-200/80 shadow-[0_0_12px_rgba(253,230,138,0.65)] animate-pulse"></div>
+      <div>
+        <h1 class="text-sm sm:text-base font-medium tracking-wide text-stone-100">AETHERIS</h1>
+        <p class="text-[11px] tracking-widest uppercase text-stone-400/90">Harmonic Geometry &amp; Atmosphere</p>
+      </div>
+    </div>
+
+    <div class="pointer-events-auto flex items-center gap-2">
+      <button
+        id="toggle-ui-btn"
+        aria-label="Toggle Controls"
+        class="glass-panel rounded-full px-3.5 py-2 text-xs font-medium text-stone-300 hover:text-white transition flex items-center gap-2 cursor-pointer"
+      >
+        <span id="ui-toggle-dot" class="w-1.5 h-1.5 rounded-full bg-amber-300"></span>
+        <span id="ui-toggle-text">Controls</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Subtle Interactive Hint (fades out after first pointer interaction) -->
+  <div id="interaction-hint" class="fixed top-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none transition-opacity duration-700">
+    <div class="glass-panel rounded-full px-4 py-1.5 text-[11px] tracking-wider uppercase text-stone-300/80">
+      Move or drag cursor to bend wind &amp; harmonic field
+    </div>
+  </div>
+
+  <!-- Apple-Inspired Floating Glassmorphic Control Bar -->
+  <aside
+    id="control-dock"
+    class="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 w-[94vw] max-w-3xl glass-panel rounded-3xl p-4 sm:p-5 transition-all duration-500 ease-out"
+  >
+    <!-- Top Row: Weather State Presets -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200/10">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-medium uppercase tracking-widest text-stone-400">Atmosphere</span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 w-full sm:w-auto">
+        <button
+          data-preset="clear"
+          class="preset-btn glass-pill active rounded-2xl px-3.5 py-2 text-xs font-medium text-stone-200 cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>☀</span>
+          <span>Clear Harmonic</span>
+        </button>
+        <button
+          data-preset="drizzle"
+          class="preset-btn glass-pill rounded-2xl px-3.5 py-2 text-xs font-medium text-stone-200 cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>🌦</span>
+          <span>Light Rain</span>
+        </button>
+        <button
+          data-preset="storm"
+          class="preset-btn glass-pill rounded-2xl px-3.5 py-2 text-xs font-medium text-stone-200 cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>⛈</span>
+          <span>Dramatic Storm</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Precision Parameter Sliders -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pt-4">
+      <!-- Wind Angle / Speed -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between text-xs">
+          <label for="slider-wind" class="text-stone-300 font-medium">Wind Shear</label>
+          <span id="val-wind" class="font-mono-tabular text-[11px] text-amber-200/90">+12°</span>
+        </div>
+        <input id="slider-wind" type="range" min="-1.0" max="1.0" step="0.01" value="0.20" />
+      </div>
+
+      <!-- Rain Intensity -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between text-xs">
+          <label for="slider-rain" class="text-stone-300 font-medium">Precipitation</label>
+          <span id="val-rain" class="font-mono-tabular text-[11px] text-amber-200/90">0%</span>
+        </div>
+        <input id="slider-rain" type="range" min="0.0" max="1.0" step="0.01" value="0.0" />
+      </div>
+
+      <!-- Geometric Complexity -->
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between text-xs">
+          <label for="slider-complexity" class="text-stone-300 font-medium">Harmonic Order</label>
+          <span id="val-complexity" class="font-mono-tabular text-[11px] text-amber-200/90">6.0</span>
+        </div>
+        <input id="slider-complexity" type="range" min="3.0" max="12.0" step="0.1" value="6.0" />
+      </div>
+    </div>
+  </aside>
+
+  <!-- WebGL Error Fallback Message Box (never uses alert()) -->
+  <div id="webgl-fallback" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-stone-950 p-6 text-center">
+    <div class="glass-panel rounded-3xl p-8 max-w-md">
+      <h2 class="text-lg font-medium text-amber-200 mb-2">WebGL Unavailable</h2>
+      <p class="text-sm text-stone-300 leading-relaxed">
+        Your browser or device could not initialize a WebGL rendering context. Please enable hardware acceleration or open this page in a modern browser.
+      </p>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       VERTEX SHADER (Full-Screen Quad)
+       ===================================================================== -->
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec2 a_position;
+    void main() {
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  </script>
+
+  <!-- =====================================================================
+       FRAGMENT SHADER (Organic Sacred Geometry + Wind-Swept Rain & Ripples)
+       ===================================================================== -->
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform vec2 u_mouse;         // Normalized cursor position [-1, 1] aspect-corrected
+    uniform float u_mouseActive;  // Smooth presence weight [0, 1]
+    uniform float u_wind;         // Wind shear [-1, 1]
+    uniform float u_rain;         // Rain intensity [0, 1]
+    uniform float u_complexity;   // Geometric polygon sides / harmonics [3, 12]
+    uniform float u_stormMood;    // Color palette & lightning mood blend [0, 1]
+
+    #define PI 3.14159265359
+    #define TAU 6.28318530718
+
+    // -----------------------------------------------------------------------
+    // 1. 2D Simplex Noise (Ashima Arts / Ian McEwan) for Organic Warping
+    // -----------------------------------------------------------------------
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
+
+    float snoise(vec2 v) {
+      const vec4 C = vec4(
+        0.211324865405187,  // (3.0 - sqrt(3.0)) / 6.0
+        0.366025403784439,  // 0.5 * (sqrt(3.0) - 1.0)
+       -0.577350269189626,  // -1.0 + 2.0 * C.x
+        0.024390243902439   // 1.0 / 41.0
+      );
+      vec2 i  = floor(v + dot(v, C.yy));
+      vec2 x0 = v - i + dot(i, C.xx);
+
+      vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+      vec4 x12 = x0.xyxy + C.xxzz;
+      x12.xy -= i1;
+
+      i = mod289(i);
+      vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+
+      vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+      m = m * m;
+      m = m * m;
+
+      vec3 x = 2.0 * fract(p * C.www) - 1.0;
+      vec3 h = abs(x) - 0.5;
+      vec3 ox = floor(x + 0.5);
+      vec3 a0 = x - ox;
+
+      m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+
+      vec3 g;
+      g.x  = a0.x * x0.x + h.x * x0.y;
+      g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+      return 130.0 * dot(m, g);
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. Hash Helpers for Procedural Rain Streaks & Water Ripples
+    // -----------------------------------------------------------------------
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    vec2 hash22(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.xx + p3.yz) * p3.zy);
+    }
+
+    mat2 rot2D(float a) {
+      float s = sin(a);
+      float c = cos(a);
+      return mat2(c, -s, s, c);
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. Smooth Rounded Polygon / Harmonic Sacred Geometry SDF
+    // -----------------------------------------------------------------------
+    float sdHarmonicPolygon(vec2 p, float radius, float sides, float roundness) {
+      float a = atan(p.y, p.x) + PI;
+      float r = TAU / max(sides, 2.001);
+      // Smooth angular folding with continuous transition across fractional sides
+      float d = cos(floor(0.5 + a / r) * r - a) * length(p);
+      // Blend toward pure Euclidean circle via roundness factor
+      float circle = length(p);
+      return mix(d, circle, roundness) - radius;
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. Layered Wind-Swept Rain Streaks
+    // -----------------------------------------------------------------------
+    float rainLayer(vec2 uv, float scale, float speed, float angle, float density, float seedOffset) {
+      // Tilt coordinate space into wind direction
+      vec2 p = rot2D(angle) * uv;
+      p.y += u_time * speed;
+
+      // Stretch vertically into elongated rain columns
+      vec2 grid = vec2(scale * 2.6, scale * 0.32);
+      vec2 st = p * grid;
+      vec2 id = floor(st);
+      vec2 f = fract(st) - 0.5;
+
+      float rnd = hash12(id + seedOffset);
+      if (rnd > density) return 0.0;
+
+      // Subtle per-column phase & horizontal jitter
+      float jitterX = (hash12(id + seedOffset + 19.3) - 0.5) * 0.55;
+      float phase = hash12(id + seedOffset + 47.1) * TAU;
+      float localY = fract(f.y + 0.5 + sin(phase) * 0.25) - 0.5;
+
+      // Tapered raindrop streak profile
+      float dx = abs(f.x - jitterX);
+      float width = mix(0.015, 0.045, rnd);
+      float streakX = smoothstep(width, 0.0, dx);
+      float streakY = smoothstep(0.48, 0.05, abs(localY)) * smoothstep(-0.48, 0.35, localY);
+
+      // Brightness variation per drop
+      float alpha = mix(0.25, 1.0, fract(rnd * 17.3));
+      return streakX * streakY * alpha;
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. Concentric Surface Raindrop Ripples
+    // -----------------------------------------------------------------------
+    float rippleLayer(vec2 uv, float scale, float speed, float density, float seedOffset) {
+      vec2 st = uv * scale;
+      vec2 id = floor(st);
+      vec2 f = fract(st) - 0.5;
+
+      float acc = 0.0;
+      // Check 3x3 neighborhood so expanding rings cross cell boundaries cleanly
+      for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+          vec2 neighbor = vec2(float(x), float(y));
+          vec2 cellId = id + neighbor;
+          vec2 rnd2 = hash22(cellId + seedOffset);
+
+          if (rnd2.x < density) {
+            float cycle = fract(u_time * speed + rnd2.y * 7.13);
+            vec2 center = neighbor + (rnd2 - 0.5) * 0.65;
+            float dist = length(f - center);
+
+            float maxR = 0.48;
+            float ringRadius = cycle * maxR;
+            float ringThickness = 0.025 * (1.0 - cycle * 0.5);
+            float ring = smoothstep(ringThickness, 0.0, abs(dist - ringRadius));
+            float fade = sin(cycle * PI) * (1.0 - cycle);
+
+            acc += ring * fade;
+          }
+        }
+      }
+      return acc;
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. Main Composition
+    // -----------------------------------------------------------------------
+    void main() {
+      // Aspect-corrected normalized coordinates centered at (0,0)
+      vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+      float distFromCenter = length(uv);
+
+      // Combine user wind slider with interactive pointer velocity/position
+      vec2 pointerDelta = uv - u_mouse;
+      float pointerDist = length(pointerDelta);
+      float pointerField = exp(-pointerDist * 2.6) * u_mouseActive;
+
+      float effectiveWind = u_wind + u_mouse.x * 0.35 * u_mouseActive;
+      float windAngle = effectiveWind * 0.52; // Up to ~30 deg slant
+
+      // ---------------------------------------------------------------------
+      // A. Atmospheric Background Palette (Warm Earthy Dusk <-> Storm Slate)
+      // ---------------------------------------------------------------------
+      vec3 clearDeep   = vec3(0.055, 0.047, 0.041); // Deep obsidian espresso
+      vec3 clearWarm   = vec3(0.165, 0.125, 0.095); // Warm terracotta umber
+      vec3 clearAccent = vec3(0.930, 0.760, 0.540); // Golden amber sunbeam
+
+      vec3 stormDeep   = vec3(0.032, 0.042, 0.052); // Deep storm slate
+      vec3 stormMid    = vec3(0.085, 0.115, 0.135); // Cool mist blue-grey
+      vec3 stormAccent = vec3(0.560, 0.760, 0.840); // Bioluminescent rain cyan-silver
+
+      vec3 bgDeep   = mix(clearDeep, stormDeep, u_stormMood);
+      vec3 bgWarm   = mix(clearWarm, stormMid, u_stormMood);
+      vec3 glowTone = mix(clearAccent, stormAccent, u_stormMood);
+
+      // Subtle atmospheric gradient + wind-drifted volumetric mist
+      float mistNoise = snoise(uv * 1.4 + vec2(-u_time * (0.06 + abs(effectiveWind) * 0.12), u_time * 0.03));
+      float radialGlow = exp(-distFromCenter * (1.85 - 0.35 * sin(u_time * 0.4)));
+      vec3 color = mix(bgDeep, bgWarm, radialGlow * 0.85 + mistNoise * 0.12);
+
+      // Occasional distant atmospheric sheet-lightning pulse in storm mode
+      float flashTrigger = pow(max(0.0, sin(u_time * 1.7) * sin(u_time * 4.3 + 1.2) * sin(u_time * 9.1)), 18.0);
+      float lightning = flashTrigger * smoothstep(0.45, 1.0, u_rain) * 0.32;
+      color += stormAccent * lightning * (0.5 + 0.5 * mistNoise);
+
+      // ---------------------------------------------------------------------
+      // B. Organic Concentric Sacred Geometry Field
+      // ---------------------------------------------------------------------
+      // Warp coordinate space with multi-octave simplex noise & cursor gravity
+      float t = u_time * (0.38 + u_rain * 0.25);
+      float n1 = snoise(uv * 2.1 + vec2(t * 0.45, -t * 0.35));
+      float n2 = snoise(uv * 4.5 - vec2(t * 0.65, t * 0.50));
+      float organicWarp = (n1 * 0.055 + n2 * 0.022) * (1.0 + u_rain * 0.65);
+
+      // Pointer repulsion / gravitational lensing around cursor
+      vec2 warpedUV = uv - normalize(pointerDelta + 1e-4) * pointerField * 0.075;
+      // Wind-induced subtle horizontal sway on the geometry
+      warpedUV.x -= effectiveWind * 0.06 * (1.0 - radialGlow);
+
+      float angle = atan(warpedUV.y, warpedUV.x);
+      float harmonicRipple = sin(angle * floor(u_complexity + 0.5) + u_time * 1.1) * 0.012;
+
+      // Render 9 concentric harmonic rings with counter-rotating phases
+      const int NUM_RINGS = 9;
+      vec3 geoAccum = vec3(0.0);
+
+      for (int i = 0; i < NUM_RINGS; i++) {
+        float fi = float(i);
+        float normIdx = fi / float(NUM_RINGS - 1); // 0.0 (inner) -> 1.0 (outer)
+
+        // Base radius breathes gently over time
+        float breath = sin(u_time * 0.75 - fi * 0.55) * 0.014;
+        float baseRadius = 0.095 + fi * 0.068 + breath;
+
+        // Alternate rotation direction per ring for sacred geometry interference
+        float dir = (mod(fi, 2.0) == 0.0) ? 1.0 : -1.0;
+        float rotSpeed = (0.12 + 0.03 * (1.0 - normIdx)) * dir;
+        vec2 ringUV = rot2D(u_time * rotSpeed + effectiveWind * 0.25 * normIdx) * warpedUV;
+
+        // Smooth morph between crisp polygon and organic circle
+        float roundness = clamp(0.28 + 0.22 * sin(u_time * 0.5 + fi * 0.8) + u_rain * 0.15, 0.15, 0.78);
+        float sides = u_complexity + sin(fi * 1.047) * 0.35;
+
+        float sdf = sdHarmonicPolygon(ringUV, baseRadius, sides, roundness);
+        sdf += organicWarp * (0.45 + normIdx * 0.85) + harmonicRipple * normIdx;
+
+        // Crisp anti-aliased glowing filament + soft atmospheric halo
+        float lineThickness = mix(0.0032, 0.0016, normIdx);
+        float coreLine = smoothstep(lineThickness, 0.0, abs(sdf));
+        float softHalo = exp(-abs(sdf) * (34.0 - normIdx * 10.0)) * 0.28;
+
+        // Subtle vertex node highlights along the ring
+        float nodeWave = pow(max(0.0, cos(angle * floor(u_complexity + 0.5) + u_time * rotSpeed * 4.0)), 10.0);
+        float nodeGlow = coreLine * nodeWave * 0.85;
+
+        // Inner rings lean warm gold/ochre; outer rings blend into atmospheric mist
+        vec3 ringColor = mix(
+          glowTone * vec3(1.12, 0.96, 0.82),
+          mix(vec3(0.82, 0.68, 0.54), stormAccent, u_stormMood),
+          normIdx
+        );
+
+        float visibility = (1.0 - normIdx * 0.42) * (0.85 + 0.15 * sin(u_time * 1.2 + fi));
+        geoAccum += ringColor * (coreLine * 0.92 + softHalo + nodeGlow) * visibility;
+      }
+
+      // Central harmonic core luminescence
+      float centerCore = exp(-length(warpedUV) * 14.0) * 0.45;
+      geoAccum += glowTone * centerCore;
+
+      color += geoAccum;
+
+      // ---------------------------------------------------------------------
+      // C. Dramatic Wind-Swept Rainfall & Concentric Ripples
+      // ---------------------------------------------------------------------
+      if (u_rain > 0.005) {
+        float rainDensity = smoothstep(0.0, 1.0, u_rain);
+        float windSpeedBoost = 1.0 + abs(effectiveWind) * 0.65;
+
+        // Three parallax depth layers (foreground fast/bright, midground, background mist)
+        float rFront = rainLayer(uv, 11.0, 2.55 * windSpeedBoost, windAngle, rainDensity * 0.42, 11.7);
+        float rMid   = rainLayer(uv + vec2(0.17, 0.31), 18.0, 1.85 * windSpeedBoost, windAngle * 0.92, rainDensity * 0.55, 37.2);
+        float rBack  = rainLayer(uv - vec2(0.29, 0.13), 28.0, 1.25 * windSpeedBoost, windAngle * 0.85, rainDensity * 0.68, 83.9);
+
+        float totalRain = rFront * 0.85 + rMid * 0.48 + rBack * 0.24;
+
+        // Rain catches light from the central geometric core & lightning
+        vec3 rainColor = mix(vec3(0.72, 0.82, 0.88), glowTone * 1.15, radialGlow * 0.65);
+        color += rainColor * totalRain * (0.55 + 0.55 * rainDensity + lightning * 1.5);
+
+        // Subtle water surface ripples interacting with the geometric plane
+        float ripples1 = rippleLayer(uv, 4.2, 0.68, rainDensity * 0.45, 5.4);
+        float ripples2 = rippleLayer(uv + 0.37, 6.8, 0.85, rainDensity * 0.38, 29.1);
+        float rippleMask = smoothstep(0.85, 0.15, distFromCenter);
+        color += rainColor * (ripples1 + ripples2 * 0.6) * 0.22 * rainDensity * rippleMask;
+      }
+
+      // ---------------------------------------------------------------------
+      // D. Filmic Vignette & Subtle Dither to Prevent Color Banding
+      // ---------------------------------------------------------------------
+      float vignette = smoothstep(1.35, 0.35, distFromCenter);
+      color *= mix(0.62, 1.0, vignette);
+
+      // Subtle ACES-inspired soft shoulder tone-mapping
+      color = (color * (2.51 * color + 0.03)) / (color * (2.43 * color + 0.59) + 0.14);
+      color = clamp(color, 0.0, 1.0);
+
+      // Micro-dither for ultra-smooth 8-bit dark gradients
+      float dither = (hash12(gl_FragCoord.xy + fract(u_time) * 100.0) - 0.5) / 255.0;
+      gl_FragColor = vec4(color + dither, 1.0);
+    }
+  </script>
+
+  <!-- =====================================================================
+       WEBGL ENGINE & SMOOTH STATE CHOREOGRAPHY
+       ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      const canvas = document.getElementById('glcanvas');
+      const gl = canvas.getContext('webgl', {
+        alpha: false,
+        antialias: false,
+        powerPreference: 'high-performance'
+      });
+
+      if (!gl) {
+        document.getElementById('webgl-fallback').classList.remove('hidden');
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // 1. Shader Compilation & Program Setup
+      // -------------------------------------------------------------------
+      function createShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('Shader compilation error:', gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      }
+
+      const vsSource = document.getElementById('vertex-shader').textContent;
+      const fsSource = document.getElementById('fragment-shader').textContent;
+
+      const vertexShader = createShader(gl.VERTEX_SHADER, vsSource);
+      const fragmentShader = createShader(gl.FRAGMENT_SHADER, fsSource);
+
+      const program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program link error:', gl.getProgramInfoLog(program));
+        return;
+      }
+
+      gl.useProgram(program);
+
+      // Full-screen triangle strip quad
+      const positionBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW
+      );
+
+      const posAttrib = gl.getAttribLocation(program, 'a_position');
+      gl.enableVertexAttribArray(posAttrib);
+      gl.vertexAttribPointer(posAttrib, 2, gl.FLOAT, false, 0, 0);
+
+      // Uniform locations
+      const uniforms = {
+        resolution: gl.getUniformLocation(program, 'u_resolution'),
+        time: gl.getUniformLocation(program, 'u_time'),
+        mouse: gl.getUniformLocation(program, 'u_mouse'),
+        mouseActive: gl.getUniformLocation(program, 'u_mouseActive'),
+        wind: gl.getUniformLocation(program, 'u_wind'),
+        rain: gl.getUniformLocation(program, 'u_rain'),
+        complexity: gl.getUniformLocation(program, 'u_complexity'),
+        stormMood: gl.getUniformLocation(program, 'u_stormMood')
+      };
+
+      // -------------------------------------------------------------------
+      // 2. High-DPI Responsive Canvas Sizing
+      // -------------------------------------------------------------------
+      function resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.floor(window.innerWidth * dpr);
+        const height = Math.floor(window.innerHeight * dpr);
+
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+          gl.viewport(0, 0, width, height);
+        }
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // -------------------------------------------------------------------
+      // 3. Atmospheric State & Smooth Interpolation Targets
+      // -------------------------------------------------------------------
+      const presets = {
+        clear: {
+          wind: 0.15,
+          rain: 0.0,
+          complexity: 6.0,
+          stormMood: 0.0
+        },
+        drizzle: {
+          wind: 0.35,
+          rain: 0.42,
+          complexity: 7.0,
+          stormMood: 0.45
+        },
+        storm: {
+          wind: 0.82,
+          rain: 0.96,
+          complexity: 9.0,
+          stormMood: 1.0
+        }
+      };
+
+      // Current interpolated values vs target values
+      const state = {
+        current: { wind: 0.15, rain: 0.0, complexity: 6.0, stormMood: 0.0 },
+        target:  { wind: 0.15, rain: 0.0, complexity: 6.0, stormMood: 0.0 },
+        mouse:   { x: 0, y: 0, targetX: 0, targetY: 0, active: 0, targetActive: 0 }
+      };
+
+      // UI Elements
+      const sliderWind = document.getElementById('slider-wind');
+      const sliderRain = document.getElementById('slider-rain');
+      const sliderComplexity = document.getElementById('slider-complexity');
+
+      const valWind = document.getElementById('val-wind');
+      const valRain = document.getElementById('val-rain');
+      const valComplexity = document.getElementById('val-complexity');
+
+      const presetButtons = document.querySelectorAll('.preset-btn');
+      const interactionHint = document.getElementById('interaction-hint');
+      let hintDismissed = false;
+
+      function updateReadouts() {
+        const deg = Math.round(state.target.wind * 30);
+        valWind.textContent = (deg > 0 ? `+${deg}°` : `${deg}°`);
+        valRain.textContent = `${Math.round(state.target.rain * 100)}%`;
+        valComplexity.textContent = state.target.complexity.toFixed(1);
+      }
+
+      function applyPreset(presetKey) {
+        const p = presets[presetKey];
+        if (!p) return;
+
+        state.target.wind = p.wind;
+        state.target.rain = p.rain;
+        state.target.complexity = p.complexity;
+        state.target.stormMood = p.stormMood;
+
+        sliderWind.value = p.wind;
+        sliderRain.value = p.rain;
+        sliderComplexity.value = p.complexity;
+
+        presetButtons.forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.preset === presetKey);
+        });
+
+        updateReadouts();
+      }
+
+      // Preset button clicks
+      presetButtons.forEach((btn) => {
+        btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+      });
+
+      // Manual slider adjustments
+      sliderWind.addEventListener('input', (e) => {
+        state.target.wind = parseFloat(e.target.value);
+        clearActivePresetHighlight();
+        updateReadouts();
+      });
+
+      sliderRain.addEventListener('input', (e) => {
+        const r = parseFloat(e.target.value);
+        state.target.rain = r;
+        // Automatically shift atmospheric mood smoothly with rain intensity
+        state.target.stormMood = Math.min(1.0, r * 1.1);
+        clearActivePresetHighlight();
+        updateReadouts();
+      });
+
+      sliderComplexity.addEventListener('input', (e) => {
+        state.target.complexity = parseFloat(e.target.value);
+        clearActivePresetHighlight();
+        updateReadouts();
+      });
+
+      function clearActivePresetHighlight() {
+        presetButtons.forEach((btn) => btn.classList.remove('active'));
+      }
+
+      // Collapsible Control Dock Toggle
+      const toggleUiBtn = document.getElementById('toggle-ui-btn');
+      const controlDock = document.getElementById('control-dock');
+      const uiToggleText = document.getElementById('ui-toggle-text');
+      const uiToggleDot = document.getElementById('ui-toggle-dot');
+      let uiVisible = true;
+
+      toggleUiBtn.addEventListener('click', () => {
+        uiVisible = !uiVisible;
+        if (uiVisible) {
+          controlDock.style.opacity = '1';
+          controlDock.style.transform = 'translate(-50%, 0)';
+          controlDock.style.pointerEvents = 'auto';
+          uiToggleText.textContent = 'Controls';
+          uiToggleDot.classList.replace('bg-stone-500', 'bg-amber-300');
+        } else {
+          controlDock.style.opacity = '0';
+          controlDock.style.transform = 'translate(-50%, 24px)';
+          controlDock.style.pointerEvents = 'none';
+          uiToggleText.textContent = 'Show UI';
+          uiToggleDot.classList.replace('bg-amber-300', 'bg-stone-500');
+        }
+      });
+
+      // -------------------------------------------------------------------
+      // 4. Interactive Mouse & Touch Wind / Gravity Distortion
+      // -------------------------------------------------------------------
+      function updatePointer(clientX, clientY) {
+        const minDim = Math.min(window.innerWidth, window.innerHeight);
+        state.mouse.targetX = (clientX - window.innerWidth * 0.5) / minDim;
+        state.mouse.targetY = -(clientY - window.innerHeight * 0.5) / minDim;
+        state.mouse.targetActive = 1.0;
+
+        if (!hintDismissed) {
+          hintDismissed = true;
+          interactionHint.style.opacity = '0';
+        }
+      }
+
+      canvas.addEventListener('mousemove', (e) => {
+        updatePointer(e.clientX, e.clientY);
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        state.mouse.targetActive = 0.0;
+      });
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+          updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) {
+          updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', () => {
+        state.mouse.targetActive = 0.0;
+      });
+
+      updateReadouts();
+
+      // -------------------------------------------------------------------
+      // 5. Render Loop with Exponential Smoothing
+      // -------------------------------------------------------------------
+      let startTime = performance.now();
+      let lastFrameTime = startTime;
+
+      function animate(now) {
+        const dt = Math.min((now - lastFrameTime) * 0.001, 0.1);
+        lastFrameTime = now;
+        const elapsed = (now - startTime) * 0.001;
+
+        // Frame-rate independent exponential smoothing
+        const ease = 1.0 - Math.exp(-4.5 * dt);
+        const pointerEase = 1.0 - Math.exp(-8.0 * dt);
+
+        state.current.wind += (state.target.wind - state.current.wind) * ease;
+        state.current.rain += (state.target.rain - state.current.rain) * ease;
+        state.current.complexity += (state.target.complexity - state.current.complexity) * ease;
+        state.current.stormMood += (state.target.stormMood - state.current.stormMood) * ease;
+
+        state.mouse.x += (state.mouse.targetX - state.mouse.x) * pointerEase;
+        state.mouse.y += (state.mouse.targetY - state.mouse.y) * pointerEase;
+        state.mouse.active += (state.mouse.targetActive - state.mouse.active) * ease;
+
+        // Upload uniforms to GPU
+        gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+        gl.uniform1f(uniforms.time, elapsed);
+        gl.uniform2f(uniforms.mouse, state.mouse.x, state.mouse.y);
+        gl.uniform1f(uniforms.mouseActive, state.mouse.active);
+        gl.uniform1f(uniforms.wind, state.current.wind);
+        gl.uniform1f(uniforms.rain, state.current.rain);
+        gl.uniform1f(uniforms.complexity, state.current.complexity);
+        gl.uniform1f(uniforms.stormMood, state.current.stormMood);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(animate);
+      }
+
+      window.onload = function () {
+        requestAnimationFrame(animate);
+      };
+    })();
+  </script>
+</body>
+</html>
